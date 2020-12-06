@@ -1,0 +1,851 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, user-scalable=yes">
+
+
+    <title>Argyle Pattern Generator</title>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Lobster&family=Open+Sans" rel="stylesheet">
+
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow-y: hidden;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+
+        .canvas-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .title-card-outer {
+            display: inline-flex;
+            flex-wrap: wrap;
+            position: absolute;
+            bottom: 0;
+            left: 0
+        }
+
+        .title-card {
+            color: black;
+            background-color: rgba(255, 255, 255, 0.9);
+            margin: 8px;
+            padding: 4px;
+            padding-left: 12px;
+            padding-right: 12px;
+            border-radius: 10px;
+            box-shadow: 2px 2px 10px black;
+        }
+
+        .toolbar {
+            display: grid;
+            grid-template-columns: repeat(5, max-content);
+            grid-column-gap: 8px;
+            max-width: 500px;
+        }
+
+        .toolbar>button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            min-width: 30px;
+            width: 10vw;
+            max-width: 48px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            padding: 2px;
+        }
+
+        .toolbar>button:disabled {
+            color: grey;
+        }
+
+        .toolbar>button:hover:not(:disabled) {
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+        }
+
+        .toolbar>button:focus:not(:disabled) {
+            outline-offset: 2px;
+        }
+
+        button>svg {
+            height: 100%;
+            width: 100%;
+
+        }
+
+        path {
+            stroke-width: 10;
+        }
+
+        .title-card a {
+            color: inherit;
+            text-decoration: inherit;
+        }
+
+        .title-card a:hover {
+            text-decoration: underline;
+            color: rgba(30, 30, 30);
+        }
+
+        .title-card h1 {
+            font-size: calc(20px + 2vw);
+            font-family: Lobster;
+            margin: 0px;
+            margin-right: 12px;
+        }
+
+        .dg.main.a {
+            margin-right: 0px;
+        }
+
+        .message {
+            z-index: 99999;
+            color: black;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 24px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border-radius: 10px;
+            box-shadow: 2px 2px 10px black;
+            font-size: 1.5rem;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            visibility: hidden;
+        }
+
+        .info-container {
+            position: relative;
+            z-index: 99999;
+            height: 100vh;
+            width: 100vw;
+            pointer-events: all;
+            background-color: rgba(0, 0, 0, 0.8);
+            visibility: hidden;
+        }
+
+        .info {
+            text-align: justify;
+            color: black;
+            background-color: rgba(255, 255, 255, 1);
+            margin: 8px;
+            padding: 24px;
+            border-radius: 10px;
+            box-shadow: 2px 2px 10px black;
+            font-size: 1rem;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 80ch;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: scroll;
+            /* visibility: hidden; */
+        }
+
+        .info>p {
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+
+        .info>h3 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        /* .info>h3 {
+            margin: 0px;
+            /* margin-bottom */
+        /* } */
+
+        .info>h3+p {
+            margin-top: 8px;
+        }
+
+        .info>ul>li>p {
+            margin: 0px;
+            margin-bottom: 4px;
+        }
+
+        .info #close-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            min-width: 40px;
+            min-height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            /* padding: 4px; */
+        }
+
+        .info #close-btn:hover {
+            color: grey
+        }
+
+        .fadeout {
+            visibility: visible;
+            opacity: 1;
+            -webkit-animation: fadein 1s 0.5s;
+            animation: fadeout 1s 0.5s;
+        }
+
+        @-webkit-keyframes fadeout {
+            from {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            to {
+                opacity: 0;
+                visibility: hidden;
+
+            }
+        }
+
+        @keyframes fadeout {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        .message>p {
+            margin: 8px;
+        }
+    </style>
+
+    <script>
+
+
+        const STATE = {}
+
+        function initState() {
+            Object.assign(STATE, {
+                baseColor: "#FFFFFF",
+                lineColor: "#000000",
+                // lineColor: randomCol(),
+                // pattern: "AB/-/BA/-",
+                // pattern: randomPattern(),
+                pattern: "/",
+                tiles: {
+                },
+                size: {
+                    width: 40,
+                    height: 52,
+                }
+            })
+
+            randomise()
+        }
+
+        initState()
+
+
+        function adjustVHUnits() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+
+        adjustVHUnits()
+
+        function initFromUrlParams() {
+            const paramsString = window.location.search
+            const searchParams = new URLSearchParams(paramsString);
+
+            STATE.pattern = searchParams.get("pattern") || STATE.pattern;
+            STATE.size.width = parseInt(searchParams.get("width")) || STATE.size.width;
+            STATE.size.height = parseInt(searchParams.get("height")) || STATE.size.height;
+
+            STATE.baseColor = searchParams.get("baseColor") || STATE.baseColor;
+            STATE.lineColor = searchParams.get("lineColor") || STATE.lineColor;
+
+            for (let [key, val] of searchParams) {
+                if (key.startsWith("col-")) {
+                    const tile = key.replace("col-", "");
+                    const col = val
+                    STATE.tiles[tile] = val
+                    console.log(key, val)
+                }
+            }
+
+        }
+
+        window.onpopstate = () => {
+            initFromUrlParams();
+            drawGui();
+            draw();
+        }
+
+        function randomCol() {
+            const col = '#' + (Math.random() * 0xFFFFFF << 0).toString(16).padStart(6, '0');
+            return col
+        }
+
+        function randomInt(min, max) {
+            return min + Math.floor(Math.random() * Math.floor(max - min));
+        }
+
+        function randomPattern() {
+            const numRows = randomInt(2, 4)
+            const numCols = randomInt(2, 3)
+            const numTiles = randomInt(1, 4)
+
+            function _getPattern() {
+                const tiles = ["-", "-", "A", "B", "C", "D"]
+                let pattern = "";
+                for (row = 0; row < numRows; row++) {
+                    for (col = 0; col < numCols; col++) {
+                        pattern += tiles[randomInt(0, numTiles + 2)];
+                    }
+                    pattern += "/"
+                }
+                return pattern
+            }
+
+            let pattern = _getPattern()
+
+            // Make 10 attempts to find a non-blank pattern.
+            let tilesUsed;
+            for (i = 0; i < 10; i++) {
+                tilesUsed = pattern.split('').filter(function (item, i, ar) { return ar.indexOf(item) === i; }).filter(item => item !== "/" && item !== "-");
+                if (tilesUsed.length <= 0) {
+                    pattern = _getPattern()
+                }
+            }
+
+            pattern = pattern.substring(0, pattern.length - 1);
+
+            return pattern
+        }
+
+        function randomise() {
+            STATE.pattern = randomPattern();
+            const tiles = STATE.pattern.split('').filter(function (item, i, ar) { return ar.indexOf(item) === i; }).filter(item => item !== "/" && item !== "-");
+            tiles.forEach(tile => {
+                STATE.tiles[tile] = randomCol();
+            })
+            STATE.lineColor = randomCol();
+        }
+
+
+        initFromUrlParams()
+
+        var GUI = null;
+
+        function resizeCanvas() {
+            const canvas = document.getElementById("myCanvas");
+            width = canvas.parentElement.offsetWidth;
+            height = canvas.parentElement.offsetHeight;
+            canvas.width = width;
+            canvas.height = height;
+            draw()
+        }
+
+
+        window.addEventListener('resize', () => { adjustVHUnits(); resizeCanvas(); });
+
+
+        function mod(n, m) {
+            // This mod function works more conveniently with negative numbers
+            return ((n % m) + m) % m;
+        }
+
+
+        // global gui;
+        function drawGui() {
+            if (!GUI) {
+
+                const initGuiClosed = window.innerWidth < 700 && window.innerHeight < 700;
+                GUI = new dat.GUI({ name: "Argyle pattern generator", closed: initGuiClosed });
+                if (initGuiClosed) GUI.close(); // Bug workaround: this toggles the GUI open/close text correctly
+
+                const presets = {
+                    patterns: {
+                        "": "",
+                        "Checkers": "A/B",
+                        "Spaced Checkers": "AB/-/BA/-",
+                        "Horizontal Stripes": "A/-/B/-",
+                        "Vertical Stripes": "AB/-",
+                        "Criss-cross": "A-/BC/-A/CB",
+                        "Dots": "A---/-/-/-/--A-/-/-/-",
+                        "Diamonds": "--A--/--AA-/-ABA-/--AA-/--A--///",
+                        "Weaving": "AB/-A/BA/B-",
+                        "<3": "AA-/-A-/-/-",
+                    }
+                }
+                const currentPresets = {
+                    presetPattern: name
+                }
+
+                const patternsGui = GUI.addFolder("Patterns");
+                patternsGui.open()
+                patternsGui.add(currentPresets, "presetPattern", presets.patterns).onChange((val) => {
+                    STATE.pattern = val
+                    drawGui();
+                    if (!!val) {
+                        GUI.updateDisplay();
+                        draw();
+                        throttledUpdateUrlParams();
+                    }
+                });
+                patternsGui.add(STATE, "pattern").onChange((val) => {
+                    drawGui();
+                    if (val !== currentPresets.presetPattern) {
+                        currentPresets.presetPattern = "";
+                        GUI.updateDisplay();
+                    }
+                    draw();
+                    throttledUpdateUrlParams();
+                })
+
+                const colorsGui = GUI.addFolder("Colors");
+                colorsGui.open()
+                colorsGui.addColor(STATE, "baseColor").onChange(throttledDraw).onFinishChange(updateUrlParams)
+                colorsGui.addColor(STATE, "lineColor").onChange(throttledDraw).onFinishChange(updateUrlParams)
+                const tilesGui = colorsGui.addFolder("Tiles")
+                tilesGui.open();
+
+                const tileSizeGui = GUI.addFolder("Tile Size");
+                tileSizeGui.add(STATE.size, "width").min(30).max(100).onChange(throttledDraw).onFinishChange(updateUrlParams)
+                tileSizeGui.add(STATE.size, "height").min(30).max(100).onChange(throttledDraw).onFinishChange(updateUrlParams)
+                tileSizeGui.open()
+
+            }
+
+            const chars = STATE.pattern.split('').filter(function (item, i, ar) { return ar.indexOf(item) === i; }).filter(item => item !== "/" && item !== "-");
+            const existingControllers = {}
+            GUI.__folders["Colors"].__folders["Tiles"].__controllers.forEach(controller => {
+                existingControllers[controller.property] = controller;
+            })
+            chars.forEach(char => {
+                if (!existingControllers[char]) {
+                    if (!STATE.tiles[char]) {
+                        STATE.tiles[char] = randomCol();
+                    }
+                    GUI.__folders["Colors"].__folders["Tiles"].addColor(STATE.tiles, char).onChange(draw)
+                }
+            })
+
+            Object.keys(existingControllers).forEach(controllerName => {
+                if (chars.indexOf(controllerName) < 0) {
+                    existingControllers[controllerName].remove()
+                }
+            })
+
+            GUI.updateDisplay();
+
+        }
+
+
+        function onLoad() {
+            drawGui()
+            resizeCanvas()
+        }
+
+        function debounce(func, wait, immediate) {
+            var timeout;
+            return function () {
+                var context = this, args = arguments;
+                var later = function () {
+                    timeout = null;
+                    if (!immediate) func.apply(context, args);
+                };
+                var callNow = immediate && !timeout;
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+                if (callNow) func.apply(context, args);
+            };
+        };
+
+        let drawCallTimeout;
+        function throttledDraw() {
+            // Slight throttling on draw to smooth visual changes
+            if (drawCallTimeout) return
+            drawCallTimeout = setTimeout(() => { draw(); drawCallTimeout = null; }, 10);
+        }
+
+        let updateUrlParamsTimeout
+        function throttledUpdateUrlParams() {
+            if (updateUrlParamsTimeout) return
+            updateUrlParamsTimeout = setTimeout(() => { updateUrlParams(); updateUrlParamsTimeout = null; }, 500);
+        }
+
+        function draw() {
+            const canvas = document.getElementById("myCanvas");
+            const ctx = canvas.getContext("2d");
+
+            width = canvas.parentElement.offsetWidth;
+            height = canvas.parentElement.offsetHeight;
+
+            const tileWidth = STATE.size.width;
+            const tileHeight = STATE.size.height;
+            const rows = parseInt(height / tileHeight) * 2 + 1;
+            const cols = parseInt(width / tileWidth) + 1;
+
+            // Clear the canvas: Removes artifacts where tiles previously met
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            function drawLines() {
+                const originalLineDash = ctx.getLineDash();
+
+                ctx.strokeStyle = STATE.lineColor;
+                const dashLength = 0.5 * (tileWidth + tileHeight) / 14;
+                ctx.setLineDash([dashLength, dashLength]);
+                ctx.lineWidth = 1;
+
+                for (let x = -rows; x < cols; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(tileWidth * x + 0.25 * tileWidth, -0.75 * tileHeight);
+                    ctx.lineTo(tileWidth * x + 0.25 * tileWidth + (tileWidth * rows) * 5, -0.75 * tileHeight + (tileHeight * rows) * 5);
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+
+                for (let x = 0; x < cols + rows; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(tileWidth * x + 0.25 * tileWidth, -0.75 * tileHeight);
+                    ctx.lineTo(tileWidth * x + 0.25 * tileWidth - (tileWidth * rows) * 5, -0.75 * tileHeight + (tileHeight * rows) * 5);
+                    ctx.stroke();
+                    ctx.closePath();
+                }
+
+                ctx.setLineDash(originalLineDash);
+            }
+
+            function drawTiles() {
+                for (let x = -1; x < cols + 1; x++) {
+                    for (let y = -2; y < rows + 1; y++) {
+
+                        const n = rows * (y - 1) + x - 1;
+                        drawTile(x, y, n)
+                    }
+                }
+            }
+
+            function drawTile(x, y, n) {
+                const originalStrokeStyle = ctx.strokeStyle;
+
+                ctx.fillStyle = STATE.baseColor;
+
+                const rowPatterns = STATE.pattern.split("/")
+                const currentRowPattern = rowPatterns[mod(y, rowPatterns.length)].split("");
+
+                const currentTile = currentRowPattern[mod(x, currentRowPattern.length)];
+                const col = STATE.tiles[currentTile]
+
+                ctx.fillStyle = col;
+                ctx.strokeStyle = ctx.fillStyle;
+                ctx.setLineDash([]);
+                ctx.lineWidth = 1;
+
+                let x_px = x * tileWidth + 0.25 * tileWidth;
+                let y_px = y * tileHeight / 2 + 0.25 * tileHeight;
+                if (y % 2) {
+                    x_px -= tileWidth / 2;
+                }
+
+                scale = 0.8;
+
+                ctx.beginPath();
+                ctx.moveTo(x_px, y_px + tileHeight / 2);
+                ctx.lineTo(x_px + tileWidth / 2, y_px);
+                ctx.lineTo(x_px + tileWidth, y_px + tileHeight / 2);
+                ctx.lineTo(x_px + tileWidth / 2, y_px + tileHeight);
+                ctx.fill();
+                ctx.stroke();
+                ctx.closePath();
+
+
+                ctx.strokeStyle = originalStrokeStyle;
+
+            }
+
+            function drawTileNumbers() {
+                for (let x = -1; x < cols + 1; x++) {
+                    for (let y = -1; y < rows + 1; y++) {
+                        let x_px = x * tileWidth + tileWidth / 2 + 0.25 * tileWidth;
+                        let y_px = y * tileHeight / 2 + tileHeight / 2 + 0.25 * tileHeight;
+                        if (y % 2) {
+                            x_px -= tileWidth / 2;
+                        }
+
+                        const n = cols * (y - 1) + x - 1;
+                        ctx.fillStyle = "rgba(255, 0, 0, 1)";
+                        const fontSize = (tileWidth + tileHeight) / 10;
+                        ctx.font = `${fontSize}px Arial`;
+                        ctx.textAlign = "center";
+
+                        const rowPatterns = STATE.pattern.split("/")
+                        const currentRowPattern = rowPatterns[mod(y, rowPatterns.length)].split("");
+
+                        // const text = currentRowPattern[mod(x, currentRowPattern.length)];
+                        // const text = STATE.tiles[currentTile]
+                        const text = n;
+                        // const text = `${x},${y}`
+                        if (text !== "-") {
+                            ctx.fillText(text, x_px, y_px + fontSize / 3);
+                        }
+                    }
+                }
+            }
+
+
+            drawTiles()
+            drawLines()
+            // drawTileNumbers() // Useful for debugging
+
+            // throttledUpdateUrlParams()
+
+        }
+
+        function updateUrlParams() {
+
+            const currentUrlParams = new URLSearchParams(window.location.search);
+            const newUrlParams = jsonToUrlParams()
+
+            // TODO: remove unused tiles from url
+
+            if (window.history.pushState) {
+                if (!window.location.search) {
+                    window.history.replaceState({}, '', `?${newUrlParams.toString()}`)
+                }
+                else if (currentUrlParams.toString() === newUrlParams.toString()) {
+                    // TODO: Unclear if this equality is order independent
+                    return
+                }
+                else {
+                    window.history.pushState({}, '', `?${newUrlParams.toString()}`)
+                }
+            }
+        }
+
+        function clearUrlParams() {
+            window.history.pushState({}, '', `${window.location.origin}${window.location.pathname}`)
+        }
+
+        function jsonToUrlParams() {
+            const newUrlParams = new URLSearchParams();
+
+            newUrlParams.set("pattern", STATE.pattern)
+            newUrlParams.set("width", parseInt(STATE.size.width))
+            newUrlParams.set("height", parseInt(STATE.size.height))
+            newUrlParams.set("lineColor", STATE.lineColor)
+            newUrlParams.set("baseColor", STATE.baseColor)
+
+            const tiles = STATE.pattern.split('').filter(function (item, i, ar) { return ar.indexOf(item) === i; }).filter(item => item !== "/" && item !== "-");
+            tiles.forEach(tile => {
+                newUrlParams.set(`col-${tile}`, STATE.tiles[tile])
+            })
+
+            return newUrlParams;
+
+        }
+
+        function share() {
+
+            updateUrlParams()
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Argyle Pattern Generator',
+                    url: window.location.href
+                }).then(() => {
+                }).catch(console.error);
+            } else {
+                // fallback: copy url to clipboard
+                var dummy = document.createElement('input'),
+                    text = window.location.href;
+
+                document.body.appendChild(dummy);
+                dummy.value = text;
+                dummy.select();
+                document.execCommand('copy');
+                document.body.removeChild(dummy);
+
+                displayShareMessage();
+            }
+        }
+
+        let removeMessageTimeout;
+        function displayShareMessage() {
+            const text = "URL copied!";
+            const el = document.getElementById("message");
+            el.firstChild.textContent = text;
+            if (removeMessageTimeout) {
+                window.clearTimeout(removeMessageTimeout)
+            }
+            el.classList.add("fadeout")
+            removeMessageTimeout = setTimeout(() => el.classList.remove("fadeout"), 1500)
+        }
+
+        function download() {
+            var link = document.createElement('a');
+            link.download = 'my-argyle-pattern.png';
+            link.href = document.getElementById('myCanvas').toDataURL()
+            link.click();
+        }
+
+        function openInfo() {
+            const element = document.getElementById("info-container");
+            element.style.visibility = "visible"
+
+        }
+
+        function closeInfo() {
+            document.getElementById("info-container").style.visibility = "hidden";
+        }
+
+        window.addEventListener("keyup", function (event) {
+            if (event.keyCode == 27) {
+                closeInfo()
+            }
+        });
+
+
+    </script>
+
+</head>
+
+<body onload="onLoad();">
+    <div class="canvas-container">
+        <canvas id="myCanvas"></canvas>
+    </div>
+
+    <div class="title-card-outer">
+        <div class="title-card">
+            <a href="./">
+                <h1>Argyle Pattern Generator</h1>
+            </a>
+
+            <div class="toolbar">
+                <button onclick="randomise(); draw(); GUI.updateDisplay(); updateUrlParams()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18px"
+                        height="18px">
+                        <path d="M0 0h24v24H0z" fill="none" />
+                        <path
+                            d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z" />
+                        <circle cx="7.5" cy="16.5" r="1.5" />
+                        <circle cx="7.5" cy="7.5" r="1.5" />
+                        <circle cx="12" cy="12" r="1.5" />
+                        <circle cx="16.5" cy="16.5" r="1.5" />
+                        <circle cx="16.5" cy="7.5" r="1.5" /></svg>
+                </button>
+                <button onclick="document.documentElement.requestFullscreen()">
+
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24"
+                        fill="currentColor">
+                        <path d="M0 0h24v24H0z" fill="none" />
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                    </svg>
+                </button>
+                <button onclick="download()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18px"
+                        height="18px">
+                        <path d="M0 0h24v24H0z" fill="none" />
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" /></svg>
+                </button>
+                <button onclick="share()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18px"
+                        height="18px">
+                        <path d="M0 0h24v24H0z" fill="none" />
+                        <path
+                            d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
+                    </svg>
+                </button>
+                <button onclick="openInfo()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18px"
+                        height="18px">
+                        <path d="M0 0h24v24H0V0z" fill="none" />
+                        <path
+                            d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+                    </svg>
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+    <div class="message" id="message">
+        <p></p>
+    </div>
+
+    <div class="info-container" id="info-container">
+        <div class="info" id="info">
+            <button id="close-btn" onclick="closeInfo()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18px"
+                    height="18px">
+                    <path d="M0 0h24v24H0z" fill="none" />
+                    <path
+                        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+            </button>
+            <p>Welcome! This is an app for creating and playing with <a
+                    href="https://en.wikipedia.org/wiki/Argyle_(pattern)">Argyle</a> inspired patterns.</p>
+            <h3>Usage</h3>
+            <p>Use the buttons at the bottom of the screen to generate, download and share designs. </p>
+            <p>Feel free to share and use any created designs for free. Attribution is welcome but not necessary.</p>
+            <p>If you use any designs for anything, we'd love to hear what you do with them - You can let us know by
+                email
+                at
+                <a href="mailto: argyle@j4l1u.com">argyle@j4l1u.com</a>. Feel free to also contact us if you enjoy the
+                tool
+                or have any feedback or requests.</p>
+
+            <h3>Advanced Pattern Guide</h3>
+            <ul>
+                <li>
+                    <p>Use the controls in the top right to manually tweak or create your own designs</p>
+                </li>
+                <li>
+                    <p>Tile patterns are represented by sequences of characters, eg. "AB/-".</p>
+                </li>
+                <li>
+                    <p>"AB" will repeat the colors for A and B across a row.</p>
+                </li>
+                <li>
+                    <p>"/" indicates a new row of the pattern.</p>
+                </li>
+                <li>
+                    <p>Tile represented by "-" will use the base color.</p>
+                </li>
+            </ul>
+
+            <p><a href="https://github.com/jamesstevenliu/argyle">Source</a></p>
+        </div>
+    </div>
+</body>
+
+</html>
