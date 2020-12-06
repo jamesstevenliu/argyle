@@ -771,7 +771,8 @@
                         <circle cx="16.5" cy="16.5" r="1.5" />
                         <circle cx="16.5" cy="7.5" r="1.5" /></svg>
                 </button>
-                <button onclick="document.documentElement.requestFullscreen()">
+                <button
+                    onclick="!document.fullscreenElement && document.documentElement.requestFullscreen() || document.exitFullscreen()">
 
                     <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24"
                         fill="currentColor">
