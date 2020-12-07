@@ -153,7 +153,7 @@
             text-align: justify;
             color: black;
             background-color: rgba(255, 255, 255, 1);
-            padding: 24px;
+            padding: 40px;
             border-radius: 10px;
             box-shadow: 2px 2px 10px black;
             font-size: 1rem;
@@ -199,8 +199,8 @@
 
         .info #close-btn {
             position: absolute;
-            top: 0;
-            right: 0;
+            top: 12px;
+            right: 12px;
             background: none;
             border: none;
             cursor: pointer;
@@ -305,14 +305,22 @@
                     const tile = key.replace("col-", "");
                     const col = val
                     STATE.tiles[tile] = val
-                    console.log(key, val)
                 }
             }
+        }
 
+        function initFromLocationHash() {
+            if (window.location.hash === "#info") {
+                openInfo()
+            }
+            else {
+                closeInfo()
+            }
         }
 
         window.onpopstate = () => {
             initFromUrlParams();
+            initFromLocationHash();
             drawGui();
             draw();
         }
@@ -369,7 +377,8 @@
         }
 
 
-        initFromUrlParams()
+        initFromUrlParams();
+        initFromLocationHash();
 
         var GUI = null;
 
@@ -421,13 +430,14 @@
                 const patternsGui = GUI.addFolder("Patterns");
                 patternsGui.open()
                 patternsGui.add(currentPresets, "presetPattern", presets.patterns).onChange((val) => {
+
+                    if (val === "") {
+                        return
+                    }
                     STATE.pattern = val
                     drawGui();
-                    if (!!val) {
-                        GUI.updateDisplay();
-                        draw();
-                        throttledUpdateUrlParams();
-                    }
+                    draw();
+                    updateUrlParams();
                 });
                 patternsGui.add(STATE, "pattern").onChange((val) => {
                     drawGui();
@@ -436,6 +446,7 @@
                         GUI.updateDisplay();
                     }
                     draw();
+                    drawGui();
                     throttledUpdateUrlParams();
                 })
 
@@ -727,13 +738,34 @@
         }
 
         function openInfo() {
-            const element = document.getElementById("info-container");
-            element.style.visibility = "visible"
+            let checkInfoElementExists = setInterval(function () {
+                const element = document.getElementById("info-container");
+                if (element) {
+                    element.style.visibility = "visible"
+                    if (window.location.hash !== "#info") {
+                        window.history.pushState({}, '', `#info`)
+                    }
+                    clearInterval(checkInfoElementExists);
+                }
+            }, 200); // check every 100ms
 
         }
 
         function closeInfo() {
-            document.getElementById("info-container").style.visibility = "hidden";
+            let checkInfoElementExists = setInterval(function () {
+                const element = document.getElementById("info-container");
+                if (element) {
+                    element.style.visibility = "hidden"
+                    if (window.location.hash === "#info") {
+                        window.history.pushState({}, '', `${window.location.href.replace("#info", "")}`)
+                    }
+                    clearInterval(checkInfoElementExists);
+                }
+            }, 200); // check every 100ms
+
+            // document.getElementById("info-container").style.visibility = "hidden";
+            // window.history.pushState({}, '', `${window.location.href.replace("#info", "")}`)
+
         }
 
         window.addEventListener("keyup", function (event) {
@@ -759,7 +791,7 @@
             </a>
 
             <div class="toolbar">
-                <button onclick="randomise(); draw(); GUI.updateDisplay(); updateUrlParams()">
+                <button onclick="randomise(); draw(); drawGui(); updateUrlParams()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18px"
                         height="18px">
                         <path d="M0 0h24v24H0z" fill="none" />
